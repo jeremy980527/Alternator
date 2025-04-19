@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>交流電發電機模擬</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #333, #000);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    canvas {
+      border: 2px solid #fff;
+      background-color: white;
+    }
+    #controls {
+      margin-top: 20px;
+      text-align: center;
+      color: white;
+    }
+    #description {
+      max-width: 600px;
+      margin-top: 20px;
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #555;
+      color: white;
+      border: 1px solid #fff;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <p>電壓: <span id="voltage">0</span> V</p>
+    <button onclick="rotateLeft()">◄◄</button>
+    <button onclick="rotateSlowLeft()">◄</button>
+    <button onclick="stopRotation()">■</button>
+    <button onclick="rotateSlowRight()">►</button>
+    <button onclick="rotateRight()">►►</button>
+  </div>
+  <div id="description">
+    <h2>交流電發電機原理</h2>
+    <p>此模擬展示了一個交流電發電機的工作原理。線圈（綠色）在U形磁鐵（紅色為N極，藍色為S極）中旋轉，根據法拉第電磁感應定律產生交流電壓。滑環和電刷將電流傳導到外部電路，點亮燈泡。使用按鈕控制線圈的旋轉方向和速度，觀察電壓和燈泡亮度的變化。線圈繞Y軸旋轉，模擬俯視效果，從正方形變為直線。</p>
+  </div>
+  <script>
+    let angle = 0;
+    let speed = 0;
+    let voltageData = [];
+    const maxVoltage = 100;
+
+    function setup() {
+      createCanvas(800, 400);
+      textAlign(CENTER);
+      textSize(14);
+    }
+
+    function draw() {
+      background(255);
+
+      // 更新旋轉角度
+      angle += speed;
+      if (angle > TWO_PI) angle -= TWO_PI;
+      if (angle < 0) angle += TWO_PI;
+
+      // 計算電壓（正弦波）
+      let voltage = maxVoltage * sin(angle);
+      document.getElementById('voltage').textContent = voltage.toFixed(2);
+
+      // 儲存電壓數據用於繪製波形
+      voltageData.push(voltage);
+      if (voltageData.length > 200) voltageData.shift();
+
+      // 繪製U形磁鐵（調整位置）
+      fill(255, 0, 0, 200);
+      beginShape();
+      vertex(200, 50);
+      vertex(500, 50);
+      vertex(500, 100);
+      vertex(400, 100);
+      vertex(400, 300);
+      vertex(300, 300);
+      vertex(300, 100);
+      vertex(200, 100);
+      endShape(CLOSE);
+
+      fill(0, 0, 255, 200);
+      beginShape();
+      vertex(200, 350);
+      vertex(500, 350);
+      vertex(500, 300);
+      vertex(400, 300);
+      vertex(400, 100);
+      vertex(300, 100);
+      vertex(300, 300);
+      vertex(200, 300);
+      endShape(CLOSE);
+
+      // 磁鐵標籤
+      fill(255);
+      text("N極", 250, 80);
+      text("S極", 250, 330);
+
+      // 繪製磁場線
+      stroke(0, 255, 0, 150);
+      strokeWeight(2);
+      for (let i = 0; i < 3; i++) {
+        let y = 150 + i * 50;
+        line(300, y, 40, y);
+        let x = 300 + i * 50;
+        line(x, 100, x, 300);
+        drawArrow(x, 100, x, 300);
+        drawArrow(300, y, 400, y);
+      }
+      fill(255);
+      text("磁場線", 450, 150);
+
+      // 繪製旋轉線圈（繞Y軸旋轉，模擬俯視效果）
+      push();
+      translate(350, 200);
+      let heightFactor = abs(sin(angle));
+      let coilHeight = map(heightFactor, 0, 1, 5, 120);
+      stroke(0, 255, 0);
+      strokeWeight(6);
+      noFill();
+      rect(-60, -coilHeight / 2, 120, coilHeight);
+      pop();
+      fill(255);
+      text("線圈", 350, 350);
+
+      // 繪製滑環（左右排列，左側）
+      stroke(0);
+      strokeWeight(2);
+      fill(150);
+      ellipse(230, 200, 30, 30); // 左滑環
+      ellipse(270, 200, 30, 30); // 右滑環
+      fill(255);
+      text("滑環", 250, 240);
+
+      // 繪製電刷（與滑環接觸，左右排列）
+      fill(0);
+      rect(220, 180, 20, 20); // 左電刷
+      rect(260, 180, 20, 20); // 右電刷
+      fill(255);
+      text("電刷", 250, 170);
+
+      // 繪製曲柄（連接到右側）
+      stroke(139, 69, 19);
+      strokeWeight(4);
+      line(410, 200, 450, 200);
+      fill(255, 215, 0);
+      ellipse(450, 200, 15, 15);
+      fill(255);
+      text("曲柄", 480, 200);
+
+      // 繪製電路（簡單閉合迴路）和燈泡
+      stroke(0);
+      strokeWeight(2);
+      // 從左電刷到燈泡底部
+      line(230, 190, 40, 190); // 左電刷向左到燈泡底部
+      line(40, 190, 40, 270); // 向下到燈泡底部
+      // 從燈泡底部到右電刷
+      line(40, 270, 270, 270); // 向右
+      line(270, 270, 270, 190); // 向上回到右電刷
+
+      // 繪製燈泡（簡單燈泡形狀）
+      push();
+      translate(40, 230);
+      // 燈泡底座
+      fill(100);
+      rect(-10, 20, 20, 10);
+      // 燈泡玻璃部分
+      fill(255, 255, 0, map(abs(voltage), 0, maxVoltage, 50, 255)); // 亮度隨電壓變化
+      ellipse(0, 0, 30, 40);
+      // 燈絲（簡單表示）
+      stroke(255, 165, 0);
+      strokeWeight(1);
+      line(0, -5, -5, 5);
+      line(0, -5, 5, 5);
+      pop();
+      fill(255);
+      text("燈泡", 40, 280);
+
+      // 繪製電壓波形（右側）
+      push();
+      translate(550, 200);
+      fill(0);
+      text("交流電壓波形", 0, -150);
+      stroke(0, 255, 0);
+      strokeWeight(2);
+      noFill();
+      beginShape();
+      for (let i = 0; i < voltageData.length; i++) {
+        vertex(i, -voltageData[i]);
+      }
+      endShape();
+
+      // 繪製波形坐標軸和標註
+      stroke(0);
+      strokeWeight(1);
+      line(-50, -100, -50, 100);
+      line(-50, 0, 200, 0);
+      fill(0);
+      text("電壓 (V)", -50, -120);
+      text("時間", 180, 20);
+      // 最大正負電壓標註
+      fill(255, 0, 0);
+      text("最大正電壓", 50, -110);
+      text("最大負電壓", 50, 110);
+      stroke(255, 0, 0);
+      line(-50, -100, 0, -100);
+      line(-50, 100, 0, 100);
+      pop();
+    }
+
+    function drawArrow(x1, y1, x2, y2) {
+      line(x1, y1, x2, y2);
+      push();
+      translate(x2, y2);
+      let angle = atan2(y2 - y1, x2 - x1);
+      rotate(angle);
+      line(0, 0, -10, -10);
+      line(0, 0, -10, 10);
+      pop();
+    }
+
+    function rotateLeft() {
+      speed = -0.1;
+    }
+
+    function rotateSlowLeft() {
+      speed = -0.05;
+    }
+
+    function stopRotation() {
+      speed = 0;
+    }
+
+    function rotateSlowRight() {
+      speed = 0.05;
+    }
+
+    function rotateRight() {
+      speed = 0.1;
+    }
+  </script>
+</body>
+</html>
